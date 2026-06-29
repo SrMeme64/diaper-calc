@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diaper Calc - Cloud Container</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="app-wrapper">
+    <!-- BARRA SUPERIOR -->
+    <header class="top-bar">
+        <div class="team-credits" id="t_credits">
+            👨‍💻 <b>Equipo :</b> Abigail  | Braiam  | Javier
+        </div>
+        
+        <h1 class="main-title" id="t_main_title">Calculadora de Pañales</h1>
+        
+        <div class="top-controls">
+            <button type="button" class="ctrl-btn active baby" id="btn_bebe" onclick="setMode('bebe')">👶 <span id="t_btn_baby">Bebé</span></button>
+            <button type="button" class="ctrl-btn" id="btn_adulto" onclick="setMode('adulto')">🧓 <span id="t_btn_adult">Adulto</span></button>
+            <button type="button" class="ctrl-btn" onclick="toggleLang()">🌐 <span id="lang_indicator">ES</span></button>
+            <button type="button" class="ctrl-btn" id="btn_dark" onclick="toggleTheme()">🌙</button>
+        </div>
+    </header>
+
+    <!-- FORMULARIO -->
+    <main class="container">
+        <div class="card">
+            <form action="/calcular" method="POST" id="main_form" onsubmit="return validarEnvio()">
+                <input type="hidden" id="perfil_input" name="perfil" value="{{ perfil_seleccionado or 'bebe' }}">
+                <input type="hidden" id="lang_input" name="lang" value="{{ lang_actual or 'es' }}">
+
+                <!-- SECCIÓN BEBÉ INTELIGENTE -->
+                <div id="seccion_bebe">
+                    <div class="form-group">
+                        <label for="baby_etapa_select" id="t_lbl_select_etapa">Clasificación por Etapa (Opcional):</label>
+                        <select id="baby_etapa_select" name="etapa_manual" onchange="onManualStageSelect()">
+                            <option value="auto">⚡ Detectar automáticamente por peso</option>
+                            <option value="0">Etapa 0 - Recién Nacido (Hasta 4.5 kg)</option>
+                            <option value="1">Etapa 1 - Lactante (4.5 a 8 kg)</option>
+                            <option value="2">Etapa 2 - Desarrollo (8 a 11 kg)</option>
+                            <option value="3">Etapa 3 - Gateo (11 a 14 kg)</option>
+                            <option value="4">Etapa 4 - Primeros Pasos (14 a 16 kg)</option>
+                            <option value="5">Etapa 5/6 - Entrenador (16 a 25 kg)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="peso_bebe" id="t_lbl_peso_b">Peso del bebé en Kilogramos (Máx 25kg):</label>
+                        <input type="number" step="0.1" id="peso_bebe" name="peso_bebe" placeholder="Ej. 7.5" value="{{ peso_ingresado if perfil_seleccionado=='bebe' else '' }}" oninput="onBabyWeightInput()">
+                        <div id="error_peso_bebe" class="error-msg">⚠️ El peso de un bebé debe estar entre 0.5kg y 25kg.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="meses" id="t_lbl_meses">Edad en meses (0 a 36):</label>
+                        <input type="number" id="meses" name="meses" placeholder="Ej. 6" min="0" max="36" value="{{ meses_ingresados or 0 }}" oninput="validarMeses()">
+                        <div id="error_meses" class="error-msg">⚠️ La etapa infantil cubre de 0 a 36 meses.</div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN ADULTO -->
+                <div id="seccion_adulto" style="display: none;">
+                    <div class="form-group">
+                        <label for="peso_adulto" id="t_lbl_peso_a">Peso del Adulto (kg):</label>
+                        <input type="number" step="0.1" id="peso_adulto" name="peso_adulto" placeholder="Ej. 74.5" value="{{ peso_ingresado if perfil_seleccionado=='adulto' else '' }}" oninput="validarPesoAdulto()">
+                        <div id="error_peso_adulto" class="error-msg">⚠️ Ingrese un peso válido para adulto (30kg - 250kg).</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="grado_incontinencia" id="t_lbl_incont">Nivel de incontinencia o movilidad:</label>
+                        <select id="grado_incontinencia" name="grado_incontinencia">
+                            <option value="leve" id="opt_leve">Leve (Pérdidas ocasionales)</option>
+                            <option value="moderada" selected id="opt_mod">Moderada (Poca movilidad / Mixto)</option>
+                            <option value="severa" id="opt_sev">Severa (En cama / Asistencia total)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit" id="btn_submit">Calcular Abastecimiento</button>
+            </form>
+
+            {% if res %}
+            <div class="resultado-box {% if res.tipo == 'Adulto Mayor' or res.tipo == 'Senior' %}adulto{% endif %}">
+                <h3 style="margin-top:0;">📊 {{ 'Report for:' if lang_actual == 'en' else 'Reporte para:' }} {{ res.tipo }}</h3>
+                <p><strong>{{ 'Classification:' if lang_actual == 'en' else 'Clasificación:' }}</strong> {{ res.etapa }}</p>
+                <p><strong>{{ 'Recommended Size:' if lang_actual == 'en' else 'Talla recomendada:' }}</strong> <span style="font-size: 1.2rem; font-weight:bold;">{{ res.talla }}</span></p>
+
+                <div class="grid-stats">
+                    <div class="stat-card">
+                        <div class="stat-value">{{ res.diarios }}</div>
+                        <div class="stat-label">{{ res.label_diarios }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">{{ res.mensuales }}</div>
+                        <div class="stat-label">{{ res.label_mensuales }}</div>
+                    </div>
+                    <div class="stat-card" style="grid-column: span 2;">
+                        <div class="stat-value" style="color:#10b981;">{{ res.gasto_mensual }}</div>
+                        <div class="stat-label">{{ res.label_gasto }}</div>
+                    </div>
+                </div>
+
+                <div class="tip-medico">
+                    <strong>💡 {{ 'Clinical Tip:' if lang_actual == 'en' else 'Consejo de salud:' }}</strong> {{ res.tip }}
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </main>
+</div>
+
+<script>
+let currentLang = "{{ lang_actual or 'es' }}";
+let currentMode = "{{ perfil_seleccionado or 'bebe' }}";
+
+// GESTOR DE MODO OSCURO
+function initTheme() {
+    const savedTheme = localStorage.getItem('diaper_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    document.getElementById('btn_dark').innerText = savedTheme === 'dark' ? '☀️' : '🌙';
+}
+
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('diaper_theme', next);
+    document.getElementById('btn_dark').innerText = next === 'dark' ? '☀️' : '🌙';
+}
+
+// SINCRONIZACIÓN SELECTOR <-> PESO BEBÉ
+const stageDefaults = { "0": 3.5, "1": 6.0, "2": 9.5, "3": 12.5, "4": 15.0, "5": 18.0 };
+
+function onManualStageSelect() {
+    const val = document.getElementById('baby_etapa_select').value;
+    const inputPeso = document.getElementById('peso_bebe');
+    if (val !== "auto") { inputPeso.value = stageDefaults[val]; }
+    validarPesoBebe();
+}
+
+function onBabyWeightInput() {
+    const w = parseFloat(document.getElementById('peso_bebe').value);
+    const select = document.getElementById('baby_etapa_select');
+    
+    if (isNaN(w) || w <= 0) { select.value = "auto"; }
+    else if (w <= 4.5) select.value = "0";
+    else if (w <= 8.0) select.value = "1";
+    else if (w <= 11.0) select.value = "2";
+    else if (w <= 14.0) select.value = "3";
+    else if (w <= 16.0) select.value = "4";
+    else if (w <= 25.0) select.value = "5";
+    else select.value = "auto";
+
+    validarPesoBebe();
+}
+
+// FILTROS ANTI-RUIDO
+function validarPesoBebe() {
+    const input = document.getElementById('peso_bebe'), err = document.getElementById('error_peso_bebe'), btn = document.getElementById('btn_submit');
+    const val = parseFloat(input.value);
+
+    if (input.value !== "" && (isNaN(val) || val < 0.5 || val > 25)) {
+        input.classList.add('input-error'); err.style.display = 'block'; btn.disabled = true; return false;
+    } else {
+        input.classList.remove('input-error'); err.style.display = 'none'; btn.disabled = false; return true;
+    }
+}
+
+function validarMeses() {
+    const input = document.getElementById('meses'), err = document.getElementById('error_meses'), val = parseInt(input.value);
+    if (!isNaN(val) && (val < 0 || val > 36)) { input.classList.add('input-error'); err.style.display = 'block'; } 
+    else { input.classList.remove('input-error'); err.style.display = 'none'; }
+}
+
+function validarPesoAdulto() {
+    const input = document.getElementById('peso_adulto'), err = document.getElementById('error_peso_adulto'), btn = document.getElementById('btn_submit');
+    const val = parseFloat(input.value);
+
+    if (input.value !== "" && (isNaN(val) || val < 30 || val > 250)) {
+        input.classList.add('input-error'); err.style.display = 'block'; btn.disabled = true; return false;
+    } else {
+        input.classList.remove('input-error'); err.style.display = 'none'; btn.disabled = false; return true;
+    }
+}
+
+function validarEnvio() {
+    if (currentMode === 'bebe') {
+        const pb = document.getElementById('peso_bebe');
+        if(!pb.value) pb.value = 7.0;
+        return validarPesoBebe();
+    } else {
+        const pa = document.getElementById('peso_adulto');
+        if(!pa.value) pa.value = 70.0;
+        return validarPesoAdulto();
+    }
+}
+
+function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('perfil_input').value = mode;
+    const bBebe = document.getElementById('btn_bebe'), bAdult = document.getElementById('btn_adulto');
+    const sBebe = document.getElementById('seccion_bebe'), sAdult = document.getElementById('seccion_adulto');
+    
+    if(mode === 'bebe') {
+        bBebe.className = 'ctrl-btn active baby'; bAdult.className = 'ctrl-btn';
+        sBebe.style.display = 'block'; sAdult.style.display = 'none';
+        validarPesoBebe();
+    } else {
+        bAdult.className = 'ctrl-btn active adult'; bBebe.className = 'ctrl-btn';
+        sBebe.style.display = 'none'; sAdult.style.display = 'block';
+        validarPesoAdulto();
+    }
+}
+
+const dict = {
+    es: {
+        title: "Calculadora de Pañales", baby: "Bebé", adult: "Adulto",
+        select_etapa: "Clasificación por Etapa (Opcional):",
+        peso_b: "Peso del bebé en Kilogramos (Máx 25kg):", p_peso_b: "Ej. 7.5",
+        meses: "Edad en meses (0 a 36):", peso_a: "Peso del Adulto (kg):",
+        incont: "Nivel de incontinencia o movilidad:", submit: "Calcular Abastecimiento",
+        leve: "Leve (Pérdidas ocasionales)", mod: "Moderada (Poca movilidad / Mixto)", sev: "Severa (En cama / Asistencia total)",
+        opt_auto: "⚡ Detectar automáticamente por peso",
+        opt_0: "Etapa 0 - Recién Nacido (Hasta 4.5 kg)", opt_1: "Etapa 1 - Lactante (4.5 a 8 kg)",
+        opt_2: "Etapa 2 - Desarrollo (8 a 11 kg)", opt_3: "Etapa 3 - Gateo (11 a 14 kg)",
+        opt_4: "Etapa 4 - Primeros Pasos (14 a 16 kg)", opt_5: "Etapa 5/6 - Entrenador (16 a 25 kg)"
+    },
+    en: {
+        title: "Diaper Supply Calculator", baby: "Baby", adult: "Adult",
+        select_etapa: "Select Baby Stage (Optional):",
+        peso_b: "Baby's Weight in Kilograms (Max 25kg):", p_peso_b: "e.g. 7.5",
+        meses: "Age in months (0 to 36):", peso_a: "Adult's Weight (kg):",
+        incont: "Incontinence or mobility level:", submit: "Calculate Supply Forecast",
+        leve: "Light (Occasional leaks)", mod: "Moderate (Low mobility / Mixed)", sev: "Severe (Bedridden / Total assistance)",
+        opt_auto: "⚡ Auto-detect stage by weight",
+        opt_0: "Stage 0 - Newborn (Up to 4.5 kg)", opt_1: "Stage 1 - Infant (4.5 to 8 kg)",
+        opt_2: "Stage 2 - Crawler (8 to 11 kg)", opt_3: "Stage 3 - Toddler (11 to 14 kg)",
+        opt_4: "Stage 4 - Walker (14 to 16 kg)", opt_5: "Stage 5/6 - Training (16 to 25 kg)"
+    }
+};
+
+function toggleLang() {
+    currentLang = currentLang === 'es' ? 'en' : 'es';
+    document.getElementById('lang_input').value = currentLang;
+    document.getElementById('lang_indicator').innerText = currentLang.toUpperCase();
+    applyLang();
+}
+
+function applyLang() {
+    const t = dict[currentLang];
+    document.getElementById('t_main_title').innerText = t.title;
+    document.getElementById('t_btn_baby').innerText = t.baby;
+    document.getElementById('t_btn_adult').innerText = t.adult;
+    document.getElementById('t_lbl_select_etapa').innerText = t.select_etapa;
+    document.getElementById('t_lbl_peso_b').innerText = t.peso_b;
+    document.getElementById('peso_bebe').placeholder = t.p_peso_b;
+    document.getElementById('t_lbl_meses').innerText = t.meses;
+    document.getElementById('t_lbl_peso_a').innerText = t.peso_a;
+    document.getElementById('t_lbl_incont').innerText = t.incont;
+    document.getElementById('btn_submit').innerText = t.submit;
+    document.getElementById('opt_leve').innerText = t.leve;
+    document.getElementById('opt_mod').innerText = t.mod;
+    document.getElementById('opt_sev').innerText = t.sev;
+    
+    const sel = document.getElementById('baby_etapa_select');
+    sel.options[0].text = t.opt_auto; sel.options[1].text = t.opt_0;
+    sel.options[2].text = t.opt_1; sel.options[3].text = t.opt_2;
+    sel.options[4].text = t.opt_3; sel.options[5].text = t.opt_4;
+    sel.options[6].text = t.opt_5;
+}
+
+window.onload = function() { initTheme(); setMode(currentMode); applyLang(); };
+</script>
+
+</body>
+</html>
