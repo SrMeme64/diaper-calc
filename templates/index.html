@@ -8,13 +8,8 @@
 </head>
 <body>
 
-<div class="app-wrapper">
-    <!-- BARRA SUPERIOR -->
+<div class="app-wrapper" style="display: flex; flex-direction: column; min-height: 100vh;">
     <header class="top-bar">
-        <div class="team-credits" id="t_credits">
-            👨‍💻 <b>Equipo :</b> Abigail  | Braiam  | Javier
-        </div>
-        
         <h1 class="main-title" id="t_main_title">Calculadora de Pañales</h1>
         
         <div class="top-controls">
@@ -25,14 +20,12 @@
         </div>
     </header>
 
-    <!-- FORMULARIO -->
-    <main class="container">
+    <main class="container" style="flex: 1;">
         <div class="card">
             <form action="/calcular" method="POST" id="main_form" onsubmit="return validarEnvio()">
                 <input type="hidden" id="perfil_input" name="perfil" value="{{ perfil_seleccionado or 'bebe' }}">
                 <input type="hidden" id="lang_input" name="lang" value="{{ lang_actual or 'es' }}">
 
-                <!-- SECCIÓN BEBÉ INTELIGENTE -->
                 <div id="seccion_bebe">
                     <div class="form-group">
                         <label for="baby_etapa_select" id="t_lbl_select_etapa">Clasificación por Etapa (Opcional):</label>
@@ -60,7 +53,6 @@
                     </div>
                 </div>
 
-                <!-- SECCIÓN ADULTO -->
                 <div id="seccion_adulto" style="display: none;">
                     <div class="form-group">
                         <label for="peso_adulto" id="t_lbl_peso_a">Peso del Adulto (kg):</label>
@@ -82,41 +74,46 @@
             </form>
 
             {% if res %}
-            <div class="resultado-box {% if res.tipo == 'Adulto Mayor' or res.tipo == 'Senior' %}adulto{% endif %}">
-                <h3 style="margin-top:0;">📊 {{ 'Report for:' if lang_actual == 'en' else 'Reporte para:' }} {{ res.tipo }}</h3>
-                <p><strong>{{ 'Classification:' if lang_actual == 'en' else 'Clasificación:' }}</strong> {{ res.etapa }}</p>
-                <p><strong>{{ 'Recommended Size:' if lang_actual == 'en' else 'Talla recomendada:' }}</strong> <span style="font-size: 1.2rem; font-weight:bold;">{{ res.talla }}</span></p>
+            <div class="resultado-box {% if res.is_adult %}adulto{% endif %}">
+                <h3 style="margin-top:0;">📊 <span id="t_res_report">Reporte para:</span> <span id="res_tipo" data-es="{{ res.tipo['es'] }}" data-en="{{ res.tipo['en'] }}">{{ res.tipo[lang_actual] }}</span></h3>
+                
+                <p><strong id="t_res_class">Clasificación:</strong> <span id="res_etapa" data-es="{{ res.etapa['es'] }}" data-en="{{ res.etapa['en'] }}">{{ res.etapa[lang_actual] }}</span></p>
+                <p><strong id="t_res_size">Talla recomendada:</strong> <span style="font-size: 1.2rem; font-weight:bold;" id="res_talla" data-es="{{ res.talla['es'] }}" data-en="{{ res.talla['en'] }}">{{ res.talla[lang_actual] }}</span></p>
 
                 <div class="grid-stats">
                     <div class="stat-card">
                         <div class="stat-value">{{ res.diarios }}</div>
-                        <div class="stat-label">{{ res.label_diarios }}</div>
+                        <div class="stat-label" id="t_res_diarios">Pañales / Día</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value">{{ res.mensuales }}</div>
-                        <div class="stat-label">{{ res.label_mensuales }}</div>
+                        <div class="stat-label" id="t_res_mensuales">Stock Mensual</div>
                     </div>
                     <div class="stat-card" style="grid-column: span 2;">
                         <div class="stat-value" style="color:#10b981;">{{ res.gasto_mensual }}</div>
-                        <div class="stat-label">{{ res.label_gasto }}</div>
+                        <div class="stat-label" id="t_res_gasto">Gasto Promedio Mensual</div>
                     </div>
                 </div>
 
                 <div class="tip-medico">
-                    <strong>💡 {{ 'Clinical Tip:' if lang_actual == 'en' else 'Consejo de salud:' }}</strong> {{ res.tip }}
+                    <strong id="t_res_tip_title">💡 Consejo de salud:</strong> <span id="res_tip" data-es="{{ res.tip['es'] }}" data-en="{{ res.tip['en'] }}">{{ res.tip[lang_actual] }}</span>
                 </div>
             </div>
             {% endif %}
-
         </div>
     </main>
+
+    <footer style="text-align: center; padding: 1.5rem; margin-top: 2rem; border-top: 1px solid var(--border); background: var(--card-bg); transition: background 0.3s, border 0.3s;">
+        <div class="team-credits" id="t_credits" style="font-size: 0.9rem; font-weight: 500;">
+            👨‍💻 <b>Equipo 1:</b> Abigail | Braiam | Javier
+        </div>
+    </footer>
 </div>
 
 <script>
 let currentLang = "{{ lang_actual or 'es' }}";
 let currentMode = "{{ perfil_seleccionado or 'bebe' }}";
 
-// GESTOR DE MODO OSCURO
 function initTheme() {
     const savedTheme = localStorage.getItem('diaper_theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
@@ -131,7 +128,6 @@ function toggleTheme() {
     document.getElementById('btn_dark').innerText = next === 'dark' ? '☀️' : '🌙';
 }
 
-// SINCRONIZACIÓN SELECTOR <-> PESO BEBÉ
 const stageDefaults = { "0": 3.5, "1": 6.0, "2": 9.5, "3": 12.5, "4": 15.0, "5": 18.0 };
 
 function onManualStageSelect() {
@@ -157,7 +153,6 @@ function onBabyWeightInput() {
     validarPesoBebe();
 }
 
-// FILTROS ANTI-RUIDO
 function validarPesoBebe() {
     const input = document.getElementById('peso_bebe'), err = document.getElementById('error_peso_bebe'), btn = document.getElementById('btn_submit');
     const val = parseFloat(input.value);
@@ -226,7 +221,9 @@ const dict = {
         opt_auto: "⚡ Detectar automáticamente por peso",
         opt_0: "Etapa 0 - Recién Nacido (Hasta 4.5 kg)", opt_1: "Etapa 1 - Lactante (4.5 a 8 kg)",
         opt_2: "Etapa 2 - Desarrollo (8 a 11 kg)", opt_3: "Etapa 3 - Gateo (11 a 14 kg)",
-        opt_4: "Etapa 4 - Primeros Pasos (14 a 16 kg)", opt_5: "Etapa 5/6 - Entrenador (16 a 25 kg)"
+        opt_4: "Etapa 4 - Primeros Pasos (14 a 16 kg)", opt_5: "Etapa 5/6 - Entrenador (16 a 25 kg)",
+        r_rep: "Reporte para: ", r_cla: "Clasificación:", r_siz: "Talla recomendada:",
+        r_dia: "Pañales / Día", r_men: "Stock Mensual", r_gas: "Gasto Promedio Mensual", r_tip: "💡 Consejo de salud: "
     },
     en: {
         title: "Diaper Supply Calculator", baby: "Baby", adult: "Adult",
@@ -238,7 +235,9 @@ const dict = {
         opt_auto: "⚡ Auto-detect stage by weight",
         opt_0: "Stage 0 - Newborn (Up to 4.5 kg)", opt_1: "Stage 1 - Infant (4.5 to 8 kg)",
         opt_2: "Stage 2 - Crawler (8 to 11 kg)", opt_3: "Stage 3 - Toddler (11 to 14 kg)",
-        opt_4: "Stage 4 - Walker (14 to 16 kg)", opt_5: "Stage 5/6 - Training (16 to 25 kg)"
+        opt_4: "Stage 4 - Walker (14 to 16 kg)", opt_5: "Stage 5/6 - Training (16 to 25 kg)",
+        r_rep: "Report for: ", r_cla: "Classification:", r_siz: "Recommended Size:",
+        r_dia: "Diapers / Day", r_men: "Monthly Stock", r_gas: "Est. Monthly Expense", r_tip: "💡 Clinical Tip: "
     }
 };
 
@@ -251,6 +250,7 @@ function toggleLang() {
 
 function applyLang() {
     const t = dict[currentLang];
+    
     document.getElementById('t_main_title').innerText = t.title;
     document.getElementById('t_btn_baby').innerText = t.baby;
     document.getElementById('t_btn_adult').innerText = t.adult;
@@ -270,6 +270,22 @@ function applyLang() {
     sel.options[2].text = t.opt_1; sel.options[3].text = t.opt_2;
     sel.options[4].text = t.opt_3; sel.options[5].text = t.opt_4;
     sel.options[6].text = t.opt_5;
+
+    if (document.getElementById('t_res_report')) {
+        document.getElementById('t_res_report').innerText = t.r_rep;
+        document.getElementById('t_res_class').innerText = t.r_cla;
+        document.getElementById('t_res_size').innerText = t.r_siz;
+        document.getElementById('t_res_diarios').innerText = t.r_dia;
+        document.getElementById('t_res_mensuales').innerText = t.r_men;
+        document.getElementById('t_res_gasto').innerText = t.r_gas;
+        document.getElementById('t_res_tip_title').innerText = t.r_tip;
+
+        const resultFields = ['res_tipo', 'res_etapa', 'res_talla', 'res_tip'];
+        resultFields.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.innerText = el.getAttribute('data-' + currentLang);
+        });
+    }
 }
 
 window.onload = function() { initTheme(); setMode(currentMode); applyLang(); };
