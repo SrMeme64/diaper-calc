@@ -3,15 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Diaper Calc - Cloud Container</title>
+    <title>Diaper Calc - Cloud Container v4</title>
     <link rel="stylesheet" href="/static/style.css">
+    <!-- LIBRERÍA DE GRÁFICAS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
 <div class="app-wrapper" style="display: flex; flex-direction: column; min-height: 100vh;">
+    <!-- BARRA SUPERIOR -->
     <header class="top-bar">
         <h1 class="main-title" id="t_main_title">Calculadora de Pañales</h1>
-        
         <div class="top-controls">
             <button type="button" class="ctrl-btn active baby" id="btn_bebe" onclick="setMode('bebe')">👶 <span id="t_btn_baby">Bebé</span></button>
             <button type="button" class="ctrl-btn" id="btn_adulto" onclick="setMode('adulto')">🧓 <span id="t_btn_adult">Adulto</span></button>
@@ -20,6 +22,7 @@
         </div>
     </header>
 
+    <!-- FORMULARIO PRINCIPAL -->
     <main class="container" style="flex: 1;">
         <div class="card">
             <form action="/calcular" method="POST" id="main_form" onsubmit="return validarEnvio()">
@@ -39,13 +42,11 @@
                             <option value="5">Etapa 5/6 - Entrenador (16 a 25 kg)</option>
                         </select>
                     </div>
-
                     <div class="form-group">
                         <label for="peso_bebe" id="t_lbl_peso_b">Peso del bebé en Kilogramos (Máx 25kg):</label>
                         <input type="number" step="0.1" id="peso_bebe" name="peso_bebe" placeholder="Ej. 7.5" value="{{ peso_ingresado if perfil_seleccionado=='bebe' else '' }}" oninput="onBabyWeightInput()">
                         <div id="error_peso_bebe" class="error-msg">⚠️ El peso de un bebé debe estar entre 0.5kg y 25kg.</div>
                     </div>
-
                     <div class="form-group">
                         <label for="meses" id="t_lbl_meses">Edad en meses (0 a 36):</label>
                         <input type="number" id="meses" name="meses" placeholder="Ej. 6" min="0" max="36" value="{{ meses_ingresados or 0 }}" oninput="validarMeses()">
@@ -59,7 +60,6 @@
                         <input type="number" step="0.1" id="peso_adulto" name="peso_adulto" placeholder="Ej. 74.5" value="{{ peso_ingresado if perfil_seleccionado=='adulto' else '' }}" oninput="validarPesoAdulto()">
                         <div id="error_peso_adulto" class="error-msg">⚠️ Ingrese un peso válido para adulto (30kg - 250kg).</div>
                     </div>
-
                     <div class="form-group">
                         <label for="grado_incontinencia" id="t_lbl_incont">Nivel de incontinencia o movilidad:</label>
                         <select id="grado_incontinencia" name="grado_incontinencia">
@@ -73,10 +73,17 @@
                 <button type="submit" class="btn-submit" id="btn_submit">Calcular Abastecimiento</button>
             </form>
 
+            <!-- CAJA DE RESULTADOS -->
             {% if res %}
             <div class="resultado-box {% if res.is_adult %}adulto{% endif %}">
+                <!-- ALERTA CLÍNICA DE PESO -->
+                {% if res.alerta %}
+                <div id="alert_box" style="padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 600; font-size: 0.95rem; {% if res.alerta.tipo == 'peligro' %}background: #fee2e2; color: #991b1b; border: 1px solid #f87171;{% else %}background: #fef9c3; color: #854d0e; border: 1px solid #facc15;{% endif %}">
+                    <span id="res_alerta" data-es="{{ res.alerta['es'] }}" data-en="{{ res.alerta['en'] }}">{{ res.alerta[lang_actual] }}</span>
+                </div>
+                {% endif %}
+
                 <h3 style="margin-top:0;">📊 <span id="t_res_report">Reporte para:</span> <span id="res_tipo" data-es="{{ res.tipo['es'] }}" data-en="{{ res.tipo['en'] }}">{{ res.tipo[lang_actual] }}</span></h3>
-                
                 <p><strong id="t_res_class">Clasificación:</strong> <span id="res_etapa" data-es="{{ res.etapa['es'] }}" data-en="{{ res.etapa['en'] }}">{{ res.etapa[lang_actual] }}</span></p>
                 <p><strong id="t_res_size">Talla recomendada:</strong> <span style="font-size: 1.2rem; font-weight:bold;" id="res_talla" data-es="{{ res.talla['es'] }}" data-en="{{ res.talla['en'] }}">{{ res.talla[lang_actual] }}</span></p>
 
@@ -95,6 +102,14 @@
                     </div>
                 </div>
 
+                <!-- GRÁFICA PREDICTIVA DE GASTOS POR ETAPA -->
+                {% if res.chart_data %}
+                <div style="margin: 1.5rem 0; padding: 1rem; background: white; border-radius: 12px; border: 1px solid var(--border);">
+                    <h4 style="margin: 0 0 1rem 0; text-align: center; color: var(--primary); font-size: 0.95rem;" id="t_chart_title">📈 Proyecciones de Gasto Mensual Promedio por Etapa (MXN)</h4>
+                    <canvas id="predictionChart" style="max-height: 250px;"></canvas>
+                </div>
+                {% endif %}
+
                 <div class="tip-medico">
                     <strong id="t_res_tip_title">💡 Consejo de salud:</strong> <span id="res_tip" data-es="{{ res.tip['es'] }}" data-en="{{ res.tip['en'] }}">{{ res.tip[lang_actual] }}</span>
                 </div>
@@ -103,8 +118,9 @@
         </div>
     </main>
 
-    <footer style="text-align: center; padding: 1.5rem; margin-top: 2rem; border-top: 1px solid var(--border); background: var(--card-bg); transition: background 0.3s, border 0.3s;">
-        <div class="team-credits" id="t_credits" style="font-size: 0.9rem; font-weight: 500;">
+    <!-- FOOTER -->
+    <footer style="text-align: center; padding: 1.5rem; margin-top: 2rem; border-top: 1px solid var(--border); background: var(--card-bg);">
+        <div class="team-credits" style="font-size: 0.9rem; font-weight: 500;">
             👨‍💻 <b>Equipo 1:</b> Abigail | Braiam | Javier
         </div>
     </footer>
@@ -113,6 +129,8 @@
 <script>
 let currentLang = "{{ lang_actual or 'es' }}";
 let currentMode = "{{ perfil_seleccionado or 'bebe' }}";
+let myChart = null;
+let chartRawData = {% if res and res.chart_data %}{{ res.chart_data | safe }}{% else %}null{% endif %};
 
 function initTheme() {
     const savedTheme = localStorage.getItem('diaper_theme') || 'light';
@@ -128,20 +146,48 @@ function toggleTheme() {
     document.getElementById('btn_dark').innerText = next === 'dark' ? '☀️' : '🌙';
 }
 
+function renderPredictionChart() {
+    if(!chartRawData) return;
+    const ctx = document.getElementById('predictionChart').getContext('2d');
+    if(myChart) myChart.destroy();
+
+    const labels = currentLang === 'es' ? chartRawData.labels_es : chartRawData.labels_en;
+    const bgColors = chartRawData.data.map((_, i) => i === chartRawData.current_idx ? '#0284c7' : '#cbd5e1');
+    const bdColors = chartRawData.data.map((_, i) => i === chartRawData.current_idx ? '#0369a1' : '#94a3b8');
+
+    myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: currentLang === 'es' ? 'Gasto Mensual Estimado ($ MXN)' : 'Est. Monthly Expense ($ MXN)',
+                data: chartRawData.data,
+                backgroundColor: bgColors,
+                borderColor: bdColors,
+                borderWidth: 1,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+
 const stageDefaults = { "0": 3.5, "1": 6.0, "2": 9.5, "3": 12.5, "4": 15.0, "5": 18.0 };
 
 function onManualStageSelect() {
     const val = document.getElementById('baby_etapa_select').value;
-    const inputPeso = document.getElementById('peso_bebe');
-    if (val !== "auto") { inputPeso.value = stageDefaults[val]; }
+    if (val !== "auto") document.getElementById('peso_bebe').value = stageDefaults[val];
     validarPesoBebe();
 }
 
 function onBabyWeightInput() {
     const w = parseFloat(document.getElementById('peso_bebe').value);
     const select = document.getElementById('baby_etapa_select');
-    
-    if (isNaN(w) || w <= 0) { select.value = "auto"; }
+    if (isNaN(w) || w <= 0) select.value = "auto";
     else if (w <= 4.5) select.value = "0";
     else if (w <= 8.0) select.value = "1";
     else if (w <= 11.0) select.value = "2";
@@ -149,14 +195,12 @@ function onBabyWeightInput() {
     else if (w <= 16.0) select.value = "4";
     else if (w <= 25.0) select.value = "5";
     else select.value = "auto";
-
     validarPesoBebe();
 }
 
 function validarPesoBebe() {
     const input = document.getElementById('peso_bebe'), err = document.getElementById('error_peso_bebe'), btn = document.getElementById('btn_submit');
     const val = parseFloat(input.value);
-
     if (input.value !== "" && (isNaN(val) || val < 0.5 || val > 25)) {
         input.classList.add('input-error'); err.style.display = 'block'; btn.disabled = true; return false;
     } else {
@@ -173,7 +217,6 @@ function validarMeses() {
 function validarPesoAdulto() {
     const input = document.getElementById('peso_adulto'), err = document.getElementById('error_peso_adulto'), btn = document.getElementById('btn_submit');
     const val = parseFloat(input.value);
-
     if (input.value !== "" && (isNaN(val) || val < 30 || val > 250)) {
         input.classList.add('input-error'); err.style.display = 'block'; btn.disabled = true; return false;
     } else {
@@ -198,7 +241,6 @@ function setMode(mode) {
     document.getElementById('perfil_input').value = mode;
     const bBebe = document.getElementById('btn_bebe'), bAdult = document.getElementById('btn_adulto');
     const sBebe = document.getElementById('seccion_bebe'), sAdult = document.getElementById('seccion_adulto');
-    
     if(mode === 'bebe') {
         bBebe.className = 'ctrl-btn active baby'; bAdult.className = 'ctrl-btn';
         sBebe.style.display = 'block'; sAdult.style.display = 'none';
@@ -223,7 +265,8 @@ const dict = {
         opt_2: "Etapa 2 - Desarrollo (8 a 11 kg)", opt_3: "Etapa 3 - Gateo (11 a 14 kg)",
         opt_4: "Etapa 4 - Primeros Pasos (14 a 16 kg)", opt_5: "Etapa 5/6 - Entrenador (16 a 25 kg)",
         r_rep: "Reporte para: ", r_cla: "Clasificación:", r_siz: "Talla recomendada:",
-        r_dia: "Pañales / Día", r_men: "Stock Mensual", r_gas: "Gasto Promedio Mensual", r_tip: "💡 Consejo de salud: "
+        r_dia: "Pañales / Día", r_men: "Stock Mensual", r_gas: "Gasto Promedio Mensual", r_tip: "💡 Consejo de salud: ",
+        chart_t: "📈 Proyecciones de Gasto Mensual Promedio por Etapa (MXN)"
     },
     en: {
         title: "Diaper Supply Calculator", baby: "Baby", adult: "Adult",
@@ -237,7 +280,8 @@ const dict = {
         opt_2: "Stage 2 - Crawler (8 to 11 kg)", opt_3: "Stage 3 - Toddler (11 to 14 kg)",
         opt_4: "Stage 4 - Walker (14 to 16 kg)", opt_5: "Stage 5/6 - Training (16 to 25 kg)",
         r_rep: "Report for: ", r_cla: "Classification:", r_siz: "Recommended Size:",
-        r_dia: "Diapers / Day", r_men: "Monthly Stock", r_gas: "Est. Monthly Expense", r_tip: "💡 Clinical Tip: "
+        r_dia: "Diapers / Day", r_men: "Monthly Stock", r_gas: "Est. Monthly Expense", r_tip: "💡 Clinical Tip: ",
+        chart_t: "📈 Estimated Average Monthly Expense per Stage (MXN)"
     }
 };
 
@@ -250,7 +294,6 @@ function toggleLang() {
 
 function applyLang() {
     const t = dict[currentLang];
-    
     document.getElementById('t_main_title').innerText = t.title;
     document.getElementById('t_btn_baby').innerText = t.baby;
     document.getElementById('t_btn_adult').innerText = t.adult;
@@ -268,8 +311,7 @@ function applyLang() {
     const sel = document.getElementById('baby_etapa_select');
     sel.options[0].text = t.opt_auto; sel.options[1].text = t.opt_0;
     sel.options[2].text = t.opt_1; sel.options[3].text = t.opt_2;
-    sel.options[4].text = t.opt_3; sel.options[5].text = t.opt_4;
-    sel.options[6].text = t.opt_5;
+    sel.options[4].text = t.opt_3; sel.options[5].text = t.opt_4; sel.options[6].text = t.opt_5;
 
     if (document.getElementById('t_res_report')) {
         document.getElementById('t_res_report').innerText = t.r_rep;
@@ -279,17 +321,18 @@ function applyLang() {
         document.getElementById('t_res_mensuales').innerText = t.r_men;
         document.getElementById('t_res_gasto').innerText = t.r_gas;
         document.getElementById('t_res_tip_title').innerText = t.r_tip;
+        if(document.getElementById('t_chart_title')) document.getElementById('t_chart_title').innerText = t.chart_t;
 
-        const resultFields = ['res_tipo', 'res_etapa', 'res_talla', 'res_tip'];
+        const resultFields = ['res_tipo', 'res_etapa', 'res_talla', 'res_tip', 'res_alerta'];
         resultFields.forEach(id => {
             const el = document.getElementById(id);
-            if(el) el.innerText = el.getAttribute('data-' + currentLang);
+            if(el && el.getAttribute('data-' + currentLang)) el.innerText = el.getAttribute('data-' + currentLang);
         });
+        renderPredictionChart();
     }
 }
 
-window.onload = function() { initTheme(); setMode(currentMode); applyLang(); };
+window.onload = function() { initTheme(); setMode(currentMode); applyLang(); renderPredictionChart(); };
 </script>
-
 </body>
 </html>
