@@ -6,8 +6,6 @@
 ![Render](https://img.shields.io/badge/Cloud_Deploy-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)
 
-<img width="632" height="800" alt="Diagrama" src="https://github.com/user-attachments/assets/48d4c139-024d-40be-a099-dea5af3dcaf3" />
-
 🌐 **Demo en vivo (Cloud Deployment):** [https://diaper-calc.onrender.com](https://diaper-calc.onrender.com)
 🌐 **Documentacion Detallada** [https://drive.google.com/file/d/1iklXPKwPrUg0m6IqkDF8BSd9a8PA_zgs/view?usp=drive_link](https://drive.google.com/file/d/1iklXPKwPrUg0m6IqkDF8BSd9a8PA_zgs/view?usp=drive_link)
 
@@ -45,6 +43,7 @@ A diferencia de calculadoras estáticas, el sistema implementa un motor de regla
 ---
 
 ##  Stack Tecnológico y Arquitectura
+<img width="632" height="800" alt="Diagrama" src="https://github.com/user-attachments/assets/48d4c139-024d-40be-a099-dea5af3dcaf3" />
 
 | Componente | Tecnología | Uso en el Proyecto |
 | :--- | :--- | :--- |
